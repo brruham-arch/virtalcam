@@ -22,6 +22,10 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle*') }}
       - run: chmod +x gradlew
+      - run: ./gradlew assembleDebug --stacktrace --info 2>&1 | grep -E "error:|warning:|\.kt:" | head -50
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        continue-on-error: true
       - run: ./gradlew assembleDebug --stacktrace
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
