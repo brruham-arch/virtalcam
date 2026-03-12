@@ -46,3 +46,7 @@ dependencies {
     // VirtualApp - add as submodule: git submodule add https://github.com/asLody/VirtualApp VirtualApp
     // Then uncomment:
 }
+
+dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
+}
