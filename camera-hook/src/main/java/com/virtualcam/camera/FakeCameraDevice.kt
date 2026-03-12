@@ -1,111 +1,66 @@
 package com.virtualcam.camera
 
 import android.hardware.camera2.*
-import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.os.Handler
 import android.view.Surface
-import java.util.concurrent.Executor
 
 /**
- * Fake CameraDevice yang membungkus kamera asli.
- *
- * Ketika target app panggil createCaptureSession(), kita:
- * 1. Ambil Surface yang dia minta
- * 2. Feed surface itu ke CameraFrameProvider (foto/video)
- * 3. Return fake CameraCaptureSession yang tidak bicara ke hardware
- *
- * Hasilnya: target app pikir kamera jalan normal,
- * tapi yang keluar adalah foto/video kita.
+ * FakeCameraDevice - wrap CameraDevice asli tapi redirect output ke CameraFrameProvider.
+ * Tidak extend CameraDevice langsung untuk menghindari abstract method issues.
+ * Sebagai gantinya, kita hook di level createCaptureSession via reflection.
  */
-class FakeCameraDevice(
-    private val real: CameraDevice,
-    private val provider: CameraFrameProvider
-) : CameraDevice() {
+object FakeCameraDeviceHelper {
 
-    override fun getId(): String = real.id
-
-    override fun createCaptureSession(
-        outputs: List<Surface>,
+    /**
+     * Intercept createCaptureSession dari CameraDevice.
+     * Dipanggil setelah onOpened() — kita ambil surface target app
+     * dan feed provider ke sana.
+     */
+    fun interceptSession(
+        realDevice: CameraDevice,
+        surfaces: List<Surface>,
         callback: CameraCaptureSession.StateCallback,
-        handler: Handler?
+        handler: Handler?,
+        provider: CameraFrameProvider
     ) {
-        // Ambil surface pertama (biasanya preview surface)
-        val previewSurface = outputs.firstOrNull()
-        if (previewSurface != null && provider.isActive) {
-            // Feed frames ke surface target app
-            provider.startStreaming(previewSurface)
-            // Notify target app bahwa session siap
-            val fakeSession = FakeCameraCaptureSession(this, previewSurface, provider)
-            handler?.post { callback.onConfigured(fakeSession) }
-                ?: callback.onConfigured(fakeSession)
-        } else {
-            // Mode real camera — pakai hardware asli
-            real.createCaptureSession(outputs, callback, handler)
-        }
-    }
-
-    override fun createCaptureSessionByOutputConfigurations(
-        outputConfigurations: List<OutputConfiguration>,
-        callback: CameraCaptureSession.StateCallback,
-        handler: Handler?
-    ) {
-        val surfaces = outputConfigurations.mapNotNull {
-            try { it.surface } catch (e: Exception) { null }
-        }
-        createCaptureSession(surfaces, callback, handler)
-    }
-
-    override fun createConstrainedHighSpeedCaptureSession(
-        outputs: List<Surface>,
-        callback: CameraCaptureSession.StateCallback,
-        handler: Handler?
-    ) = createCaptureSession(outputs, callback, handler)
-
-    override fun createCaptureRequest(templateType: Int): CaptureRequest.Builder =
-        real.createCaptureRequest(templateType)
-
-    override fun createReprocessCaptureRequest(inputResult: TotalCaptureResult): CaptureRequest.Builder =
-        real.createReprocessCaptureRequest(inputResult)
-
-    override fun close() {
-        provider.stopStreaming()
-        real.close()
-    }
-
-    override fun isSessionConfigurationSupported(sessionConfiguration: SessionConfiguration): Boolean = true
-
-    override fun createCaptureSession(config: SessionConfiguration) {
-        val surfaces = config.outputConfigurations.mapNotNull {
-            try { it.surface } catch (e: Exception) { null }
-        }
-        if (surfaces.isNotEmpty() && provider.isActive) {
+        if (provider.isActive && surfaces.isNotEmpty()) {
+            // Start streaming ke surface target app
             provider.startStreaming(surfaces.first())
-            val fakeSession = FakeCameraCaptureSession(this, surfaces.first(), provider)
-            config.executor.execute { config.stateCallback.onConfigured(fakeSession) }
+
+            // Buat session via real device tapi dengan surface kita tetap
+            realDevice.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    // Wrap session dengan fake yang block hardware capture
+                    callback.onConfigured(FakeCameraCaptureSession(session, provider))
+                }
+                override fun onConfigureFailed(session: CameraCaptureSession) {
+                    callback.onConfigureFailed(session)
+                }
+            }, handler)
         } else {
-            real.createCaptureSession(config)
+            // Real camera mode
+            realDevice.createCaptureSession(surfaces, callback, handler)
         }
     }
 }
 
 /**
- * Fake CameraCaptureSession — menggantikan session kamera asli.
- * Target app tetap bisa setRepeatingRequest() dll tanpa error.
+ * Fake session yang block setRepeatingRequest ke hardware
+ * (karena kita sudah inject frame via provider).
  */
 class FakeCameraCaptureSession(
-    private val device: CameraDevice,
-    private val surface: Surface,
+    private val real: CameraCaptureSession,
     private val provider: CameraFrameProvider
 ) : CameraCaptureSession() {
 
-    override fun getDevice(): CameraDevice = device
+    override fun getDevice(): CameraDevice = real.device
 
     override fun capture(
         request: CaptureRequest,
         listener: CaptureCallback?,
         handler: Handler?
-    ): Int = 0
+    ): Int = 0 // no-op, provider yang handle frame
 
     override fun captureBurst(
         requests: List<CaptureRequest>,
@@ -117,10 +72,7 @@ class FakeCameraCaptureSession(
         request: CaptureRequest,
         listener: CaptureCallback?,
         handler: Handler?
-    ): Int {
-        // Provider sudah streaming, tidak perlu apa-apa lagi
-        return 0
-    }
+    ): Int = 0 // block — provider sudah streaming
 
     override fun setRepeatingBurst(
         requests: List<CaptureRequest>,
@@ -129,16 +81,14 @@ class FakeCameraCaptureSession(
     ): Int = 0
 
     override fun stopRepeating() {}
-
     override fun abortCaptures() {}
-
     override fun prepare(target: Surface) {}
 
     override fun close() {
         provider.stopStreaming()
+        try { real.close() } catch (e: Exception) {}
     }
 
     override fun isReprocessable(): Boolean = false
-
     override fun getInputSurface(): Surface? = null
 }
