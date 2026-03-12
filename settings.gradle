@@ -18,4 +18,3 @@ rootProject.name = "VirtualCam"
 include ':app'
 include ':virtual-core'
 include ':camera-hook'
-include ':VirtualApp:lib'
