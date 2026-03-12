@@ -36,54 +36,39 @@
             </intent-filter>
         </activity>
 
-        <!-- VirtualApp Stub Activities (slot untuk menjalankan Activity target app) -->
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C0" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_0" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C1" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_1" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C2" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_2" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C3" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_3" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C4" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_4" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C5" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_5" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C6" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_6" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C7" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_7" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C8" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_8" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$C9" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_9" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$S0" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleInstance" android:taskAffinity="com.lody.virtual.virtual_activity_S0"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$S1" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleInstance" android:taskAffinity="com.lody.virtual.virtual_activity_S1"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$S2" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleInstance" android:taskAffinity="com.lody.virtual.virtual_activity_S2"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$T0" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleTask" android:taskAffinity="com.lody.virtual.virtual_activity_T0"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$T1" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleTask" android:taskAffinity="com.lody.virtual.virtual_activity_T1"/>
-        <activity android:name="com.lody.virtual.client.stub.StubActivity$T2" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale" android:exported="false" android:launchMode="singleTask" android:taskAffinity="com.lody.virtual.virtual_activity_T2"/>
+        <activity android:name="com.lody.virtual.client.stub.StubActivity$C0" android:process=":p0" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_0" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <activity android:name="com.lody.virtual.client.stub.StubActivity$C1" android:process=":p1" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_1" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <activity android:name="com.lody.virtual.client.stub.StubActivity$C2" android:process=":p2" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_2" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <activity android:name="com.lody.virtual.client.stub.StubActivity$C3" android:process=":p3" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_3" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <activity android:name="com.lody.virtual.client.stub.StubActivity$C4" android:process=":p4" android:exported="false" android:taskAffinity="com.lody.virtual.virtual_activity_4" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
 
-        <!-- VirtualApp Stub Services -->
         <service android:name="com.lody.virtual.client.stub.StubService$P0" android:exported="false" android:process=":p0"/>
         <service android:name="com.lody.virtual.client.stub.StubService$P1" android:exported="false" android:process=":p1"/>
         <service android:name="com.lody.virtual.client.stub.StubService$P2" android:exported="false" android:process=":p2"/>
         <service android:name="com.lody.virtual.client.stub.StubService$P3" android:exported="false" android:process=":p3"/>
         <service android:name="com.lody.virtual.client.stub.StubService$P4" android:exported="false" android:process=":p4"/>
-        <service android:name="com.lody.virtual.client.stub.StubService$P5" android:exported="false" android:process=":p5"/>
 
-        <!-- VirtualApp Core Server -->
         <service
             android:name="com.lody.virtual.server.ServiceManager"
             android:exported="false"
             android:process=":x"/>
 
-        <!-- VirtualApp Binder Provider (IPC bridge antar proses virtual) -->
         <provider
             android:name="com.lody.virtual.client.stub.BinderProvider"
             android:authorities="${applicationId}.virtual.binder_provider"
             android:exported="false"
+            android:initOrder="100"
             android:process=":x"/>
 
-        <!-- VirtualApp Stub ContentProviders -->
-        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C0" android:authorities="${applicationId}.virtual.stub0" android:exported="false"/>
-        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C1" android:authorities="${applicationId}.virtual.stub1" android:exported="false"/>
-        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C2" android:authorities="${applicationId}.virtual.stub2" android:exported="false"/>
-        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C3" android:authorities="${applicationId}.virtual.stub3" android:exported="false"/>
-        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C4" android:authorities="${applicationId}.virtual.stub4" android:exported="false"/>
+        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C0" android:authorities="${applicationId}.virtual.stub0" android:exported="false" android:process=":p0"/>
+        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C1" android:authorities="${applicationId}.virtual.stub1" android:exported="false" android:process=":p1"/>
+        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C2" android:authorities="${applicationId}.virtual.stub2" android:exported="false" android:process=":p2"/>
+        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C3" android:authorities="${applicationId}.virtual.stub3" android:exported="false" android:process=":p3"/>
+        <provider android:name="com.lody.virtual.client.stub.StubContentProvider$C4" android:authorities="${applicationId}.virtual.stub4" android:exported="false" android:process=":p4"/>
 
-        <!-- VirtualApp Broadcast Receiver -->
-        <receiver android:name="com.lody.virtual.client.stub.StubReceiver" android:exported="false"/>
+        <receiver
+            android:name="com.lody.virtual.client.stub.StubReceiver"
+            android:exported="false"/>
 
     </application>
 </manifest>
