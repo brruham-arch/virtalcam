@@ -1,154 +1,262 @@
 package com.virtualcam.camera
 
-import android.content.Context
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
-import android.net.Uri
+import android.hardware.camera2.*
+import android.hardware.camera2.params.OutputConfiguration
 import android.os.Handler
+import android.view.Surface
+import java.util.concurrent.Executor
 
-/**
- * Camera hook yang terintegrasi dengan VirtualApp.
- *
- * VirtualApp punya sistem hook sendiri berbasis reflection + Binder proxy.
- * Kita daftarkan hook kamera di sini, lalu VirtualApp akan memanggil
- * intercept() setiap kali target app mencoba buka kamera.
- *
- * Cara daftarkannya: di VirtualCamApp.onCreate(), setelah VirtualCore.startup(),
- * panggil CameraHook.install(context).
- */
-object CameraHook {
+class FakeCameraDevice(
+    private val real: CameraDevice,
+    private val provider: CameraFrameProvider
+) : CameraDevice() {
 
-    @Volatile var photoUri: Uri? = null
-    @Volatile var videoUri: Uri? = null
-    @Volatile var mode: Mode = Mode.REAL
-
-    enum class Mode { REAL, PHOTO, VIDEO }
-
-    private var provider: CameraFrameProvider? = null
-
-    fun install(context: Context) {
-        provider = CameraFrameProvider(context)
-        hookCameraManager(context)
+    override fun getId(): String {
+        return real.id
     }
 
-    fun setPhoto(uri: Uri) {
-        photoUri = uri
-        mode = Mode.PHOTO
-        provider?.setPhotoSource(uri)
-    }
-
-    fun setVideo(uri: Uri) {
-        videoUri = uri
-        mode = Mode.VIDEO
-        provider?.setVideoSource(uri)
-    }
-
-    fun setReal() {
-        mode = Mode.REAL
-        provider?.clearSource()
-    }
-
-    fun getProvider(): CameraFrameProvider? = provider
-
-    /**
-     * Hook CameraManager.openCamera() via VirtualApp hook system.
-     *
-     * VirtualApp menyediakan interface Hook yang bisa di-register.
-     * Setiap kali target app panggil openCamera(), kita intercept
-     * dan inject CameraFrameProvider sebagai outputnya.
-     */
-    private fun hookCameraManager(context: Context) {
+    override fun close() {
         try {
-            // Daftarkan hook via VirtualApp's MethodHook system
-            // VirtualApp sudah intercept semua system service calls dari target app.
-            // Kita tinggal pasang di lapisan camera service-nya.
-
-            val hookClass = Class.forName("com.lody.virtual.client.hook.base.MethodProxy")
-            val hookManager = Class.forName("com.lody.virtual.client.hook.base.HookManager")
-
-            // Hook openCamera
-            val openCameraHook = object : Any() {
-                // Ini dipanggil VirtualApp setiap target app call openCamera()
-                fun beforeCall(cameraId: String, callback: CameraDevice.StateCallback, handler: Handler?): Boolean {
-                    if (mode == Mode.REAL) return false // lanjut ke kamera asli
-
-                    // Inject fake camera device
-                    val fakeCallback = FakeCameraStateCallback(callback, provider!!)
-                    return true // block call asli, pakai fake
-                }
-            }
-
-            // Register ke VirtualApp hook system
-            // Actual call: VirtualCore.get().addHook(CameraServiceHook)
-            registerCameraServiceHook()
-
+            provider.stopStreaming()
         } catch (e: Exception) {
-            // VirtualApp belum aktif atau versi berbeda
-            // Fallback ke direct hook
-            VirtualCameraHook.init(context, provider!!)
+        }
+        try {
+            real.close()
+        } catch (e: Exception) {
         }
     }
 
-    private fun registerCameraServiceHook() {
-        try {
-            // VirtualApp hook registration
-            // Path: com.lody.virtual.client.hook.proxies.CameraServiceProxy
-            val hookProxiesClass = Class.forName(
-                "com.lody.virtual.client.hook.proxies.CameraServiceProxy"
-            )
-            val instance = hookProxiesClass.getDeclaredField("INSTANCE")
-                .apply { isAccessible = true }
-                .get(null)
-
-            // Set our provider
-            hookProxiesClass.getDeclaredMethod("setCameraFrameProvider", CameraFrameProvider::class.java)
-                .apply { isAccessible = true }
-                .invoke(instance, provider)
-
-        } catch (e: Exception) {
-            // VirtualApp tidak punya CameraServiceProxy — buat sendiri via reflection
-            injectCameraProxyManually()
-        }
+    override fun createCaptureRequest(templateType: Int): CaptureRequest.Builder {
+        return real.createCaptureRequest(templateType)
     }
 
-    private fun injectCameraProxyManually() {
-        try {
-            // Ambil list hook yang sudah ada di VirtualApp
-            val hookManagerClass = Class.forName("com.lody.virtual.client.hook.base.HookManager")
-            val getInstance = hookManagerClass.getMethod("getInstance")
-            val manager = getInstance.invoke(null)
+    override fun createReprocessCaptureRequest(inputResult: TotalCaptureResult): CaptureRequest.Builder {
+        return real.createReprocessCaptureRequest(inputResult)
+    }
 
-            // Cari camera service hook
-            val findHook = hookManagerClass.getMethod("findHook", String::class.java)
-            val cameraHook = findHook.invoke(manager, "camera") ?: return
+    override fun createCaptureSession(
+        outputs: MutableList<Surface>,
+        callback: CameraCaptureSession.StateCallback,
+        handler: Handler?
+    ) {
+        FakeCameraDeviceHelper.interceptSession(
+            real,
+            outputs,
+            callback,
+            handler,
+            provider
+        )
+    }
 
-            // Inject provider ke camera hook
-            val setProvider = cameraHook.javaClass.getDeclaredMethod(
-                "setFrameProvider", CameraFrameProvider::class.java
-            ).apply { isAccessible = true }
-            setProvider.invoke(cameraHook, provider)
+    override fun createCaptureSessionByOutputConfigurations(
+        outputConfigs: MutableList<OutputConfiguration>,
+        callback: CameraCaptureSession.StateCallback,
+        handler: Handler?
+    ) {
+        val surfaces = outputConfigs.mapNotNull { it.surface }
+        FakeCameraDeviceHelper.interceptSession(
+            real,
+            surfaces,
+            callback,
+            handler,
+            provider
+        )
+    }
 
+    override fun createReprocessableCaptureSession(
+        inputConfig: InputConfiguration,
+        outputs: MutableList<Surface>,
+        callback: CameraCaptureSession.StateCallback,
+        handler: Handler?
+    ) {
+        FakeCameraDeviceHelper.interceptSession(
+            real,
+            outputs,
+            callback,
+            handler,
+            provider
+        )
+    }
+
+    override fun createConstrainedHighSpeedCaptureSession(
+        outputs: MutableList<Surface>,
+        callback: CameraCaptureSession.StateCallback,
+        handler: Handler?
+    ) {
+        FakeCameraDeviceHelper.interceptSession(
+            real,
+            outputs,
+            callback,
+            handler,
+            provider
+        )
+    }
+
+    override fun createCaptureSession(
+        sessionConfiguration: SessionConfiguration
+    ) {
+        val surfaces = sessionConfiguration.outputConfigurations.mapNotNull { it.surface }
+
+        FakeCameraDeviceHelper.interceptSession(
+            real,
+            surfaces,
+            sessionConfiguration.stateCallback,
+            null,
+            provider
+        )
+    }
+
+    override fun isSessionConfigurationSupported(sessionConfiguration: SessionConfiguration): Boolean {
+        return try {
+            real.isSessionConfigurationSupported(sessionConfiguration)
         } catch (e: Exception) {
-            e.printStackTrace()
+            false
         }
     }
 }
 
-/**
- * Fake CameraDevice.StateCallback yang intercept onOpened()
- * dan feed frames dari CameraFrameProvider ke surface target app.
- */
-class FakeCameraStateCallback(
-    private val real: CameraDevice.StateCallback,
-    private val provider: CameraFrameProvider
-) : CameraDevice.StateCallback() {
+object FakeCameraDeviceHelper {
 
-    override fun onOpened(camera: CameraDevice) {
-        // Wrap camera device dengan proxy kita
-        val fakeCam = FakeCameraDevice(camera, provider)
-        real.onOpened(fakeCam)
+    fun interceptSession(
+        realDevice: CameraDevice,
+        surfaces: List<Surface>,
+        callback: CameraCaptureSession.StateCallback,
+        handler: Handler?,
+        provider: CameraFrameProvider
+    ) {
+
+        if (provider.isActive && surfaces.isNotEmpty()) {
+
+            provider.startStreaming(surfaces.first())
+
+            realDevice.createCaptureSession(
+                surfaces,
+                object : CameraCaptureSession.StateCallback() {
+
+                    override fun onConfigured(session: CameraCaptureSession) {
+                        callback.onConfigured(
+                            FakeCameraCaptureSession(session, provider)
+                        )
+                    }
+
+                    override fun onConfigureFailed(session: CameraCaptureSession) {
+                        callback.onConfigureFailed(session)
+                    }
+
+                },
+                handler
+            )
+
+        } else {
+            realDevice.createCaptureSession(surfaces, callback, handler)
+        }
+    }
+}
+
+class FakeCameraCaptureSession(
+    private val real: CameraCaptureSession,
+    private val provider: CameraFrameProvider
+) : CameraCaptureSession() {
+
+    override fun getDevice(): CameraDevice {
+        return real.device
     }
 
-    override fun onDisconnected(camera: CameraDevice) = real.onDisconnected(camera)
-    override fun onError(camera: CameraDevice, error: Int) = real.onError(camera, error)
+    override fun capture(
+        request: CaptureRequest,
+        listener: CaptureCallback?,
+        handler: Handler?
+    ): Int {
+        return try {
+            real.capture(request, listener, handler)
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override fun captureBurst(
+        requests: MutableList<CaptureRequest>,
+        listener: CaptureCallback?,
+        handler: Handler?
+    ): Int {
+        return try {
+            real.captureBurst(requests, listener, handler)
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override fun setRepeatingRequest(
+        request: CaptureRequest,
+        listener: CaptureCallback?,
+        handler: Handler?
+    ): Int {
+        return try {
+            real.setRepeatingRequest(request, listener, handler)
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override fun setRepeatingBurst(
+        requests: MutableList<CaptureRequest>,
+        listener: CaptureCallback?,
+        handler: Handler?
+    ): Int {
+        return try {
+            real.setRepeatingBurst(requests, listener, handler)
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override fun stopRepeating() {
+        try {
+            real.stopRepeating()
+        } catch (e: Exception) {
+        }
+    }
+
+    override fun abortCaptures() {
+        try {
+            real.abortCaptures()
+        } catch (e: Exception) {
+        }
+    }
+
+    override fun prepare(surface: Surface) {
+        try {
+            real.prepare(surface)
+        } catch (e: Exception) {
+        }
+    }
+
+    override fun isReprocessable(): Boolean {
+        return false
+    }
+
+    override fun getInputSurface(): Surface? {
+        return null
+    }
+
+    override fun finalizeOutputConfigurations(
+        outputConfigs: MutableList<OutputConfiguration>?
+    ) {
+        try {
+            real.finalizeOutputConfigurations(outputConfigs)
+        } catch (e: Exception) {
+        }
+    }
+
+    override fun close() {
+        try {
+            provider.stopStreaming()
+        } catch (e: Exception) {
+        }
+
+        try {
+            real.close()
+        } catch (e: Exception) {
+        }
+    }
 }
