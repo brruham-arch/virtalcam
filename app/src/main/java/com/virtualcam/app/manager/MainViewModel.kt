@@ -1,115 +1,62 @@
 package com.virtualcam.app.manager
 
 import android.app.Application
-import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.virtualcam.core.InstallResult
-import com.virtualcam.core.SystemAppScanner
-import com.virtualcam.core.VirtualAppInfo
-import com.virtualcam.core.VirtualSpaceEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _apps = MutableLiveData<List<VirtualAppInfo>>(emptyList())
-    val apps: LiveData<List<VirtualAppInfo>> = _apps
+    private val context = getApplication<Application>()
 
-    private val _message = MutableLiveData<String?>()
-    val message: LiveData<String?> = _message
+    private val scanner = SystemAppScanner(context)
 
-    private val _loading = MutableLiveData(false)
-    val loading: LiveData<Boolean> = _loading
+    val apps = MutableLiveData<List<InstalledApp>>()
 
-    private lateinit var engine: VirtualSpaceEngine
+    val selectedApp = MutableLiveData<InstalledApp?>()
 
-    fun init(context: Context) {
+    val isLoading = MutableLiveData<Boolean>()
 
-        engine = VirtualSpaceEngine.get(context)
-
-        engine.init()
-
-        loadSystemApps()
-
+    init {
+        loadApps()
     }
 
-    fun loadSystemApps() {
+    fun loadApps() {
 
-        viewModelScope.launch {
+        isLoading.postValue(true)
 
-            _apps.value = SystemAppScanner.getInstalledApps(getApplication())
+        viewModelScope.launch(Dispatchers.IO) {
 
+            val result = scanner.getInstalledApps()
+
+            apps.postValue(result)
+
+            isLoading.postValue(false)
         }
-
     }
 
-    fun cloneApp(app: VirtualAppInfo) {
+    fun selectApp(app: InstalledApp) {
 
-        viewModelScope.launch {
-
-            _loading.value = true
-
-            when (val result = engine.installApp(app.apkPath)) {
-
-                is InstallResult.Success -> {
-
-                    _message.value = "✓ ${result.app.appName} berhasil di clone"
-
-                }
-
-                is InstallResult.Error -> {
-
-                    _message.value = "✗ ${result.message}"
-
-                }
-
-            }
-
-            _loading.value = false
-
-        }
-
+        selectedApp.postValue(app)
     }
 
-    fun launchApp(packageName: String) {
+    fun refreshApps() {
 
-        val ok = engine.launchApp(packageName)
-
-        if (!ok) _message.value = "Launch gagal"
-
+        loadApps()
     }
 
-    fun setPhotoSource(uri: Uri) {
+    fun uninstallApp(packageName: String) {
 
-        engine.setPhotoSource(uri)
+        val intent = Intent(Intent.ACTION_DELETE)
 
-        _message.value = "📷 Kamera → foto"
+        intent.data = Uri.parse("package:$packageName")
 
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+        context.startActivity(intent)
     }
-
-    fun setVideoSource(uri: Uri) {
-
-        engine.setVideoSource(uri)
-
-        _message.value = "🎬 Kamera → video"
-
-    }
-
-    fun useRealCamera() {
-
-        engine.useRealCamera()
-
-        _message.value = "Kamera asli aktif"
-
-    }
-
-    fun clearMessage() {
-
-        _message.value = null
-
-    }
-
 }
