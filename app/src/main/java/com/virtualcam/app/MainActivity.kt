@@ -19,6 +19,8 @@ import com.virtualcam.app.ui.VirtualAppAdapter
 import com.virtualcam.app.manager.MainViewModel
 import com.virtualcam.camera.CameraFrameProvider
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,11 +31,31 @@ class MainActivity : AppCompatActivity() {
     // File pickers
     private val pickApk = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri ?: return@registerForActivityResult
-        val path = getRealPathFromUri(uri) ?: run {
-            toast("Tidak bisa baca path APK")
-            return@registerForActivityResult
+
+        lifecycleScope.launch {
+
+            try {
+
+                val input = contentResolver.openInputStream(uri) ?: run {
+                    toast("Tidak bisa membuka APK")
+                    return@launch
+                }
+
+                val file = File(cacheDir, "install.apk")
+
+                input.use { inp ->
+                    FileOutputStream(file).use { out ->
+                        inp.copyTo(out)
+                    }
+                }
+
+                viewModel.installApp(file.absolutePath)
+
+            } catch (e: Exception) {
+                toast("Install gagal: ${e.message}")
+            }
+
         }
-        lifecycleScope.launch { viewModel.installApp(path) }
     }
 
     private val pickPhoto = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -47,8 +69,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.setVideoSource(uri)
         updateCameraSourceBadge(CameraFrameProvider.SourceType.VIDEO)
     }
-
-    // ── Lifecycle ─────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,14 +85,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.init(this)
     }
 
-    // ── Toolbar ───────────────────────────────────────────────
-
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = "VirtualCam"
     }
-
-    // ── RecyclerView ──────────────────────────────────────────
 
     private fun setupRecyclerView() {
         adapter = VirtualAppAdapter(
@@ -82,8 +98,6 @@ class MainActivity : AppCompatActivity() {
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
     }
-
-    // ── Camera source panel ───────────────────────────────────
 
     private fun setupCameraSourcePanel() {
         binding.btnSourceReal.setOnClickListener {
@@ -104,9 +118,9 @@ class MainActivity : AppCompatActivity() {
         binding.tvSourceLabel.text = label
         binding.tvSourceIcon.setTextColor(color)
 
-        // highlight active button
         listOf(binding.btnSourceReal, binding.btnSourcePhoto, binding.btnSourceVideo)
             .forEach { it.alpha = 0.45f }
+
         when (type) {
             CameraFrameProvider.SourceType.NONE  -> binding.btnSourceReal.alpha  = 1f
             CameraFrameProvider.SourceType.PHOTO -> binding.btnSourcePhoto.alpha = 1f
@@ -114,15 +128,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── FAB ───────────────────────────────────────────────────
-
     private fun setupFab() {
         binding.fabAddApp.setOnClickListener {
             pickApk.launch("application/vnd.android.package-archive")
         }
     }
-
-    // ── Observe ───────────────────────────────────────────────
 
     private fun observeViewModel() {
         viewModel.apps.observe(this) { apps ->
@@ -134,12 +144,10 @@ class MainActivity : AppCompatActivity() {
             msg?.let { toast(it); viewModel.clearMessage() }
         }
 
-        viewModel.loading.observe(this) { loading ->
+        viewModel.isLoading.observe(this) { loading ->
             binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         }
     }
-
-    // ── Permissions ───────────────────────────────────────────
 
     private fun checkPermissions() {
         val needed = buildList {
@@ -153,24 +161,10 @@ class MainActivity : AppCompatActivity() {
         }.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
+
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), 100)
         }
-    }
-
-    // ── Utils ─────────────────────────────────────────────────
-
-    private fun getRealPathFromUri(uri: Uri): String? {
-        // Try content resolver path
-        val cursor = contentResolver.query(uri, arrayOf("_data"), null, null, null)
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val idx = it.getColumnIndex("_data")
-                if (idx >= 0) return it.getString(idx)
-            }
-        }
-        // Fallback to Uri path
-        return uri.path
     }
 
     private fun toast(msg: String) {
