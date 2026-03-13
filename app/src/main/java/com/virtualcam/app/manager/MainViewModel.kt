@@ -19,6 +19,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val selectedApp = MutableLiveData<InstalledApp?>()
 
+    val message = MutableLiveData<String?>()
+
     val isLoading = MutableLiveData<Boolean>()
 
     init {
@@ -31,9 +33,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
 
-            val result = scanner.getInstalledApps()
+            try {
 
-            apps.postValue(result)
+                val result = scanner.getInstalledApps()
+
+                apps.postValue(result)
+
+            } catch (e: Exception) {
+
+                message.postValue(e.message ?: "Failed to load apps")
+            }
 
             isLoading.postValue(false)
         }
@@ -42,6 +51,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectApp(app: InstalledApp) {
 
         selectedApp.postValue(app)
+
+        message.postValue("Selected: ${app.packageName}")
     }
 
     fun refreshApps() {
@@ -51,12 +62,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun uninstallApp(packageName: String) {
 
-        val intent = Intent(Intent.ACTION_DELETE)
+        try {
 
-        intent.data = Uri.parse("package:$packageName")
+            val intent = Intent(Intent.ACTION_DELETE)
 
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            intent.data = Uri.parse("package:$packageName")
 
-        context.startActivity(intent)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+            context.startActivity(intent)
+
+        } catch (e: Exception) {
+
+            message.postValue(e.message ?: "Uninstall failed")
+        }
+    }
+
+    fun clearMessage() {
+
+        message.postValue(null)
     }
 }
